@@ -33,7 +33,7 @@ func (q Query) Fetch() *Iterator {
 	iter := q.Session.Query(q.Statement, q.Values...).Iter()
 	return &Iterator{
 		iter: iter,
-		row:  q.Table.Row(),
+		row:  q.Table.Model(),
 	}
 }
 

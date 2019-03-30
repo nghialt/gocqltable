@@ -78,7 +78,7 @@ func (ks Keyspace) Tables() ([]string, error) {
 	return resultSet, nil
 }
 
-func (ks Keyspace) NewTable(name string, rowKeys, rangeKeys []string, row interface{}) Table {
+func (ks Keyspace) NewTable(name string, rowKeys, rangeKeys []string, model interface{}) Table {
 	if ks.session == nil {
 		ks.session = defaultSession
 	}
@@ -86,11 +86,21 @@ func (ks Keyspace) NewTable(name string, rowKeys, rangeKeys []string, row interf
 		name:      name,
 		rowKeys:   rowKeys,
 		rangeKeys: rangeKeys,
-		row:       row,
+		model:     model,
 
 		keyspace: ks,
 		session:  ks.session,
 	}
+}
+
+func (ks Keyspace) NewCqlTable(model interface{}) *Table {
+	if ks.session == nil {
+		ks.session = defaultSession
+	}
+
+	table := NewTable(ks, model)
+
+	return table
 }
 
 func (ks Keyspace) Name() string {

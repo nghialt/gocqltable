@@ -351,7 +351,7 @@ func (r Range) Fetch() (interface{}, error) {
 	query := fmt.Sprintf(`SELECT %s FROM %q.%q %s %s %s %s`, selectString, r.table.Keyspace().Name(), r.table.Name(), whereString, orderString, limitString, filteringString)
 	iter := r.table.Query(query, whereVals...).Fetch()
 
-	result := reflect.Zero(reflect.SliceOf(reflect.PtrTo(reflect.TypeOf(r.table.Row())))) // Create a zero-value slice of pointers to our model type
+	result := reflect.Zero(reflect.SliceOf(reflect.PtrTo(reflect.TypeOf(r.table.Model())))) // Create a zero-value slice of pointers to our model type
 	for row := range iter.Range() {
 		result = reflect.Append(result, reflect.ValueOf(row)) // Append the rows to our slice
 	}
