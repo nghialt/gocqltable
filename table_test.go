@@ -19,11 +19,23 @@ type User struct {
 	Created  time.Time `cql:"created"`
 }
 
+type CustomUser struct {
+	Email    string `cql:"email"`
+	Password string `cql:"password"`
+	Birthday string `cql:"birthday" cqlx:"partkey"`
+}
+
+func (r CustomUser) TableName() string {
+	return "custom_name_abc"
+}
+
 func TestGetCreateSchema(t *testing.T) {
 
 	expectSchema := "CREATE TABLE \"keyspace\".\"users\" (\nSex int,\nactive boolean,\naddress varchar,\nbirthday varchar,\ncreated timestamp,\nemail varchar,\npassword varchar,\nPRIMARY KEY ((active, birthday), address, Sex))"
 
-	userTable := NewTable(Keyspace{"keyspace", nil}, User{})
+	userTable, err := NewTable(Keyspace{"keyspace", nil}, User{})
+	assert.NoError(t, err)
+
 	schema, err := userTable.GetCreateSchema()
 
 	assert.NoError(t, err)
@@ -34,7 +46,9 @@ func TestInitRowKeys(t *testing.T) {
 
 	expectRowKeys := []string{"active", "birthday"}
 
-	userTable := NewTable(Keyspace{"keyspace", nil}, User{})
+	userTable, err := NewTable(Keyspace{"keyspace", nil}, User{})
+	assert.NoError(t, err)
+
 	rowKeys := userTable.RowKeys()
 
 	sort.Slice(rowKeys, func(i, j int) bool {
@@ -55,4 +69,20 @@ func TestInitRowKeys(t *testing.T) {
 		"created", "email", "password"}
 	rows := userTable.Rows()
 	assert.Equal(t, expectRows, rows)
+}
+
+func TestInitCustomTableName(t *testing.T) {
+	expectName := "custom_name_abc"
+
+	pointerUserTable, err := NewTable(Keyspace{"keyspace", nil}, &CustomUser{})
+	assert.NoError(t, err)
+
+	pointerName := pointerUserTable.Name()
+	assert.Equal(t, expectName, pointerName)
+
+	valueUserTable, err := NewTable(Keyspace{"keyspace", nil}, CustomUser{})
+	assert.NoError(t, err)
+
+	valueName := valueUserTable.Name()
+	assert.Equal(t, expectName, valueName)
 }

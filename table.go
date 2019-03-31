@@ -36,7 +36,7 @@ type Table struct {
 }
 
 func NewTable(keyspace Keyspace,
-	model interface{}) *Table {
+	model interface{}) (*Table, error) {
 
 	result := &Table{
 		keyspace: keyspace,
@@ -44,11 +44,23 @@ func NewTable(keyspace Keyspace,
 	}
 
 	result.InitName()
-	result.InitRowKeys()
-	result.InitRangeKeys()
-	result.InitRows()
 
-	return result
+	err := result.InitRowKeys()
+	if err != nil {
+		return nil, err
+	}
+
+	err = result.InitRangeKeys()
+	if err != nil {
+		return nil, err
+	}
+
+	err = result.InitRows()
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func (t Table) Create() error {
@@ -174,18 +186,25 @@ func (t *Table) InitName() {
 	t.name = GetTableName(t.model)
 }
 
-func (t *Table) InitRowKeys() {
-	rowKeys := getNamesWithTag(t.model, "cqlx", "partkey")
+func (t *Table) InitRowKeys() error {
+	rowKeys, err := getNamesWithTag(t.model, "cqlx", "partkey")
+	if err != nil {
+		return err
+	}
+
 	for i, key := range rowKeys {
 		rowKeys[i] = t.GetCqlName(key)
 	}
 
 	t.rowKeys = rowKeys
+
+	return nil
 }
 
 func (t *Table) GetCqlName(attName string) string {
 	modelValue := reflect.ValueOf(t.model)
-	modelType := modelValue.Type()
+	modelIndirect := reflect.Indirect(modelValue)
+	modelType := modelIndirect.Type()
 	field, ok := modelType.FieldByName(attName)
 	if !ok {
 		return ""
@@ -198,30 +217,44 @@ func (t *Table) GetCqlName(attName string) string {
 
 	return cqlName
 }
-func (t *Table) InitRangeKeys() {
-	rangeKeys := getNamesWithTag(t.model, "cqlx", "softkey")
+func (t *Table) InitRangeKeys() error {
+	rangeKeys, err := getNamesWithTag(t.model, "cqlx", "softkey")
+	if err != nil {
+		return err
+	}
+
 	for i, key := range rangeKeys {
 		rangeKeys[i] = t.GetCqlName(key)
 	}
 
 	t.rangeKeys = rangeKeys
+
+	return nil
 }
 
-func (t *Table) InitRows() {
-	t.rows = getNamesWithTag(t.model, "cql", "")
+func (t *Table) InitRows() error {
+	rows, err := getNamesWithTag(t.model, "cql", "")
+	if err != nil {
+		return err
+	}
+
+	t.rows = rows
 	for i, row := range t.rows {
 		t.rows[i] = t.GetCqlName(row)
 	}
 	sort.Slice(t.rows, func(i, j int) bool {
 		return strings.Compare(t.rows[i], t.rows[j]) < 0
 	})
+
+	return nil
 }
 
 func GetTableName(model interface{}) string {
 	modelType := reflect.TypeOf(model)
 	m, ok := modelType.MethodByName("TableName")
 	if ok {
-		returnVals := m.Func.Call([]reflect.Value{})
+		returnVals := m.Func.Call(
+			[]reflect.Value{reflect.ValueOf(model)})
 		return returnVals[0].String()
 	}
 
@@ -233,10 +266,15 @@ func GetTableName(model interface{}) string {
 	return result
 }
 
-func getNamesWithTag(model interface{}, tag, match string) []string {
+func getNamesWithTag(model interface{}, tag, match string) ([]string, error) {
 	result := make([]string, 0)
 	val := reflect.ValueOf(model)
-	numFields := val.Type().NumField()
+	valIndirect := reflect.Indirect(val)
+	if !valIndirect.IsValid() {
+		return nil, fmt.Errorf("model is invalid")
+	}
+	valType := valIndirect.Type()
+	numFields := valType.NumField()
 
 	startMatch := regexp.MustCompile(fmt.Sprintf("%s;", match))
 	endMatch := regexp.MustCompile(fmt.Sprintf(";%s", match))
@@ -244,8 +282,8 @@ func getNamesWithTag(model interface{}, tag, match string) []string {
 	matchRegexs := []*regexp.Regexp{startMatch, middleMatch, endMatch}
 
 	for i := 0; i < numFields; i++ {
-		name := val.Type().Field(i).Name
-		value := val.Type().Field(i).Tag.Get(tag)
+		name := valType.Field(i).Name
+		value := valType.Field(i).Tag.Get(tag)
 		if len(value) == 0 {
 			continue
 		}
@@ -268,5 +306,5 @@ func getNamesWithTag(model interface{}, tag, match string) []string {
 		result = append(result, name)
 	}
 
-	return result
+	return result, nil
 }
