@@ -43,9 +43,9 @@ func stringTypeOf(i interface{}) (string, error) {
 
 func cassaType(i interface{}) gocql.Type {
 	switch i.(type) {
-	case int, int32:
+	case int, uint, int32, uint32:
 		return gocql.TypeInt
-	case int64:
+	case int64, uint64:
 		return gocql.TypeBigInt
 	case string:
 		return gocql.TypeVarchar

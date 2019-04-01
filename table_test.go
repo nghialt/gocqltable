@@ -16,6 +16,7 @@ type User struct {
 	Birthday string    `cql:"birthday" cqlx:"partkey"`
 	Address  string    `cql:"address" cqlx:"softkey"`
 	Sex      int       `cql:"Sex" cqlx:"softkey"`
+	Age      uint32    `cql:"Age"`
 	Created  time.Time `cql:"created"`
 }
 
@@ -31,7 +32,7 @@ func (r CustomUser) TableName() string {
 
 func TestGetCreateSchema(t *testing.T) {
 
-	expectSchema := "CREATE TABLE \"keyspace\".\"users\" (\nSex int,\nactive boolean,\naddress varchar,\nbirthday varchar,\ncreated timestamp,\nemail varchar,\npassword varchar,\nPRIMARY KEY ((active, birthday), address, Sex))"
+	expectSchema := "CREATE TABLE \"keyspace\".\"users\" (\nAge int,\nSex int,\nactive boolean,\naddress varchar,\nbirthday varchar,\ncreated timestamp,\nemail varchar,\npassword varchar,\nPRIMARY KEY ((active, birthday), address, Sex))"
 
 	userTable, err := NewTable(Keyspace{"keyspace", nil}, User{})
 	assert.NoError(t, err)
@@ -65,7 +66,7 @@ func TestInitRowKeys(t *testing.T) {
 	})
 	assert.Equal(t, expectRangeKeys, rangeKeys)
 
-	expectRows := []string{"Sex", "active", "address", "birthday",
+	expectRows := []string{"Age", "Sex", "active", "address", "birthday",
 		"created", "email", "password"}
 	rows := userTable.Rows()
 	assert.Equal(t, expectRows, rows)
